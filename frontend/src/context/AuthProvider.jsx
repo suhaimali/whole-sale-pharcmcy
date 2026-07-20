@@ -24,22 +24,23 @@ export const AuthProvider = ({ children }) => {
   }
 
   const login = async (identifier, password) => {
-    // Only allow one specific login
-    if ((identifier === 'admin' || identifier === 'admin@pharmacy.com') && password === 'admin') {
-      const mockUser = {
-        _id: 'mock-id-12345',
-        username: 'admin',
-        role: 'Administrator',
-        email: 'admin@pharmacy.com'
-      };
-      const mockToken = 'mock-id-12345-token';
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/login', {
+        identifier,
+        password
+      });
       
-      setUser(mockUser);
-      setToken(mockToken);
+      const { token: userToken, ...userData } = response.data;
+      setUser(userData);
+      setToken(userToken);
+      
       return { success: true };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Login failed. Please check your connection and credentials.' 
+      };
     }
-    
-    return { success: false, message: 'Invalid credentials. Use admin / admin' };
   };
 
   const logout = () => {

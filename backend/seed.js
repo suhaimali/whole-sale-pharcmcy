@@ -14,16 +14,16 @@ const seedUsers = async () => {
 
     const users = [
       {
-        username: 'alivpsuahim',
-        email: 'alivpsuahim@gmail.com',
-        password: '123456',
+        username: 'admin',
+        email: 'admin@pharmacy.com',
+        password: 'admin', // This will be hashed by the User model's pre-save hook
         role: 'Administrator',
         isActive: true,
       }
     ];
 
     await User.insertMany(users);
-    console.log('Data Imported!');
+    console.log('Admin User Created Successfully! (admin / admin)');
     process.exit();
   } catch (error) {
     console.error(`${error}`);
