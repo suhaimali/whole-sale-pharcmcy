@@ -1,0 +1,17 @@
+{
+  "name": "whole-sale-pharcmcy",
+  "version": "1.0.0",
+  "description": "Wholesale Pharmacy ERP Root",
+  "main": "index.js",
+  "scripts": {
+    "server": "npm run dev --prefix backend",
+    "client": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

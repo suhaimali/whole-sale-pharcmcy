@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply antialiased text-gray-900 bg-gray-50;
+  }
+
+  /* Global Premium Table UI Styles */
+  table {
+    @apply w-full border-collapse text-sm !important;
+  }
+  
+  thead {
+    @apply bg-slate-50/80 backdrop-blur-md sticky top-0 z-10 border-b border-slate-100 !important;
+  }
+
+  th {
+    @apply px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-200/60 whitespace-nowrap !important;
+  }
+
+  tr {
+    @apply transition-all duration-200 hover:bg-slate-50/80 !important;
+  }
+
+  td {
+    @apply px-6 py-4 text-slate-700 font-medium border-b border-slate-100/70 whitespace-nowrap !important;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-pharmacy-600 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 hover:bg-pharmacy-500 hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-semibold text-white shadow-sm transition-all duration-200 hover:bg-red-500 hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold text-gray-600 transition-all duration-200 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-icon {
+    @apply p-2 rounded-lg transition-colors duration-200 hover:bg-gray-100 disabled:opacity-50 text-gray-500 hover:text-gray-900;
+  }
+
+  /* Forms */
+  .input-field {
+    @apply mt-1 block w-full rounded-xl border-gray-300 bg-white py-2 px-3 text-sm shadow-sm transition-colors duration-200 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500;
+  }
+  .input-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden;
+  }
+  .card-header {
+    @apply px-6 py-4 border-b border-gray-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4;
+  }
+  .card-body {
+    @apply p-6;
+  }
+
+  /* Tables */
+  .table-container {
+    @apply w-full overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all duration-200 hover:shadow;
+  }
+  .table-base {
+    @apply w-full min-w-full divide-y divide-gray-100 text-sm;
+  }
+  .table-header {
+    @apply sticky top-0 bg-gray-50/75 backdrop-blur-md z-10 border-b border-gray-200/60;
+  }
+  .table-th {
+    @apply px-6 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap;
+  }
+  .table-row {
+    @apply divide-y divide-gray-50 bg-white transition-all duration-200 hover:bg-slate-50/70;
+  }
+  .table-cell {
+    @apply px-6 py-4 whitespace-nowrap text-gray-700 text-sm font-medium;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide transition-all duration-200;
+  }
+  .badge-success {
+    @apply badge bg-emerald-50 text-emerald-700 border border-emerald-100/80;
+  }
+  .badge-warning {
+    @apply badge bg-amber-50 text-amber-700 border border-amber-100/80;
+  }
+  .badge-danger {
+    @apply badge bg-rose-50 text-rose-700 border border-rose-100/80;
+  }
+  .badge-info {
+    @apply badge bg-blue-50 text-blue-700 border border-blue-100/80;
+  }
+  .badge-neutral {
+    @apply badge bg-gray-50 text-gray-700 border border-gray-100/80;
+  }
+
+  /* Modals */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 overflow-y-auto;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .modal-backdrop {
+    @apply absolute inset-0;
+  }
+  .modal-content {
+    @apply relative z-10 w-full bg-white rounded-2xl shadow-2xl flex flex-col border border-gray-100;
+    max-height: none;
+    overflow: visible;
+    margin: auto;
+  }
+  .modal-header {
+    @apply flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white rounded-t-2xl shrink-0;
+  }
+  .modal-body {
+    @apply p-6 overflow-y-auto;
+    max-height: 70vh;
+  }
+  .modal-footer {
+    @apply px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 shrink-0 rounded-b-2xl;
+  }
+}
+
+/* ===== ANIMATION UTILITIES ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; transform: scale(0.95); }
+  to   { transform: translateY(0);    opacity: 1; transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s ease-out both;
+}
+
+.animate-slideLeft {
+  animation: slideLeft 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Hide scrollbar for clean horizontal scrolling */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
