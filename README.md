@@ -20,6 +20,29 @@ A modern, responsive, and comprehensive Enterprise Resource Planning (ERP) appli
 * **Charts & Visualizations:** Recharts
 * **Backend:** Node.js, Express (API structure built in)
 
+## Folder Structure
+
+```text
+whole-sale-pharcmcy/
+├── backend/                  # Node.js/Express API Server
+│   ├── config/               # Database and environment configurations
+│   ├── controllers/          # Request handlers and business logic
+│   ├── middleware/           # Express middlewares (auth, validation)
+│   ├── models/               # Mongoose database schemas
+│   ├── routes/               # API route definitions
+│   ├── services/             # Reusable business logic and external APIs
+│   └── utils/                # Helper functions and utilities
+├── frontend/                 # React UI Application
+│   ├── public/               # Static assets (icons, favicons)
+│   └── src/
+│       ├── assets/           # Images and media
+│       ├── components/       # Reusable React components (modals, tables)
+│       ├── context/          # React Context (Auth)
+│       ├── pages/            # Main views (Dashboard, Login)
+│       └── services/         # API integration methods
+└── README.md
+```
+
 ## Getting Started
 
 1. Clone the repository
