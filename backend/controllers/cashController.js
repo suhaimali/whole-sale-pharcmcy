@@ -1,5 +1,4 @@
 const CashTx = require('../models/CashTx');
-const { localCashTxs, isDbConnected } = require('./mockData');
 
 // @desc    Get all cash transactions and calculate cash in hand balance
 // @route   GET /api/cash

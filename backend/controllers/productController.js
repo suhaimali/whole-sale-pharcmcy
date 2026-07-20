@@ -1,5 +1,4 @@
 const Product = require('../models/Product');
-const { localProducts, isDbConnected } = require('./mockData');
 
 // @desc    Get all products
 // @route   GET /api/products

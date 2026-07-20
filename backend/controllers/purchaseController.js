@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const Purchase = require('../models/Purchase');
 const Product = require('../models/Product');
 const CashTx = require('../models/CashTx');
-const { localPurchases, localProducts, localCashTxs, isDbConnected } = require('./mockData');
 
 // @desc    Get all purchases
 // @route   GET /api/purchases

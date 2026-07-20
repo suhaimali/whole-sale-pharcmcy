@@ -1,6 +1,5 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
-const { localUsers, isDbConnected } = require('./mockData');
 
 // @desc    Get all users
 // @route   GET /api/users

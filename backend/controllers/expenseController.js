@@ -1,6 +1,5 @@
 const Expense = require('../models/Expense');
 const CashTx = require('../models/CashTx');
-const { localExpenses, localCashTxs, isDbConnected } = require('./mockData');
 
 // @desc    Get all expenses
 // @route   GET /api/expenses
