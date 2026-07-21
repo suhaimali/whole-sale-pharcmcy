@@ -84,6 +84,63 @@ const createExpense = async (req, res) => {
   }
 };
 
+// @desc    Update an expense
+// @route   PUT /api/expenses/:id
+// @access  Private
+const updateExpense = async (req, res) => {
+  const { title, amount, category, expenseDate } = req.body;
+
+  if (isDbConnected()) {
+    try {
+      const expense = await Expense.findById(req.params.id);
+      if (expense) {
+        expense.title = title || expense.title;
+        expense.amount = amount ? Number(amount) : expense.amount;
+        expense.category = category || expense.category;
+        expense.expenseDate = expenseDate ? new Date(expenseDate) : expense.expenseDate;
+        
+        const updatedExpense = await expense.save();
+
+        // Update corresponding cash tx if any
+        const refNum = `EXP-${expense._id.toString().substring(expense._id.toString().length - 4).toUpperCase()}`;
+        await CashTx.updateMany(
+          { referenceNumber: refNum },
+          { $set: { amount: updatedExpense.amount, notes: `Expense: ${updatedExpense.title} (${updatedExpense.category})` } }
+        );
+
+        res.json(updatedExpense);
+      } else {
+        res.status(404).json({ message: 'Expense not found' });
+      }
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  } else {
+    // In-memory fallback
+    const index = localExpenses.findIndex((e) => e._id === req.params.id);
+    if (index !== -1) {
+      localExpenses[index].title = title || localExpenses[index].title;
+      localExpenses[index].amount = amount ? Number(amount) : localExpenses[index].amount;
+      localExpenses[index].category = category || localExpenses[index].category;
+      localExpenses[index].expenseDate = expenseDate ? new Date(expenseDate) : localExpenses[index].expenseDate;
+      localExpenses[index].updatedAt = new Date();
+
+      // Update cash tx
+      const refNum = `EXP-${localExpenses[index]._id.substring(localExpenses[index]._id.length - 4).toUpperCase()}`;
+      const cashIndex = localCashTxs.findIndex((tx) => tx.referenceNumber === refNum);
+      if (cashIndex !== -1) {
+        localCashTxs[cashIndex].amount = localExpenses[index].amount;
+        localCashTxs[cashIndex].notes = `Expense: ${localExpenses[index].title} (${localExpenses[index].category})`;
+        localCashTxs[cashIndex].updatedAt = new Date();
+      }
+
+      res.json(localExpenses[index]);
+    } else {
+      res.status(404).json({ message: 'Expense not found' });
+    }
+  }
+};
+
 // @desc    Delete an expense
 // @route   DELETE /api/expenses/:id
 // @access  Private (Admin, Administrator)
@@ -129,5 +186,6 @@ const deleteExpense = async (req, res) => {
 module.exports = {
   getExpenses,
   createExpense,
+  updateExpense,
   deleteExpense,
 };

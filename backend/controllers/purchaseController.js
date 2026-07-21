@@ -48,8 +48,6 @@ const createPurchase = async (req, res) => {
   const purchaseOrderNumber = `${prefix}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
   if (isDbConnected()) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
     try {
       // 1. Log Purchase record
       const purchase = new Purchase({
@@ -65,14 +63,14 @@ const createPurchase = async (req, res) => {
         purchaseStaff: req.user.username,
       });
 
-      const createdPurchase = await purchase.save({ session });
+      const createdPurchase = await purchase.save();
 
       // 2. If status is 'Received', update inventory
       if (status === 'Received') {
         for (const item of items) {
           let product = await Product.findOne({
             name: { $regex: new RegExp(`^${item.name}$`, 'i') }
-          }).session(session);
+          });
 
           if (docType === 'Bill') {
             if (product) {
@@ -81,7 +79,7 @@ const createPurchase = async (req, res) => {
               product.price = Number(item.price);
               if (item.batchNumber) product.batchNumber = item.batchNumber;
               if (item.expiryDate) product.expiryDate = new Date(item.expiryDate);
-              await product.save({ session });
+              await product.save();
             } else {
               let sku = item.name.substring(0, 3).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
               await Product.create([{
@@ -96,12 +94,12 @@ const createPurchase = async (req, res) => {
                 expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
                 supplier: supplierName,
                 description: `Imported via Purchase Bill ${purchaseOrderNumber}`
-              }], { session });
+              }]);
             }
           } else if (docType === 'Return') {
             if (product) {
               product.quantity = Math.max(0, product.quantity - Number(item.quantity));
-              await product.save({ session });
+              await product.save();
             }
           }
         }
@@ -121,15 +119,11 @@ const createPurchase = async (req, res) => {
           referenceNumber: purchaseOrderNumber,
           notes,
           recordedBy: req.user.username,
-        }], { session });
+        }]);
       }
 
-      await session.commitTransaction();
-      session.endSession();
       res.status(201).json(createdPurchase);
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
       res.status(400).json({ message: error.message });
     }
   } else {
@@ -278,8 +272,134 @@ const collectPayment = async (req, res) => {
   }
 };
 
+// @desc    Delete a purchase
+// @route   DELETE /api/purchases/:id
+// @access  Private
+const deletePurchase = async (req, res) => {
+  if (isDbConnected()) {
+    try {
+      const purchase = await Purchase.findById(req.params.id);
+      if (!purchase) {
+        return res.status(404).json({ message: 'Purchase document not found' });
+      }
+
+      // Reverse inventory logic
+      if (purchase.type === 'Bill' && purchase.status === 'Received') {
+        for (const item of purchase.items) {
+          const product = await Product.findById(item.productId || item._id);
+          // Note: createPurchase might not save productId reliably if it's a new product, but we try:
+          if (product) {
+            product.quantity = Math.max(0, product.quantity - item.quantity);
+            await product.save();
+          }
+        }
+      } else if (purchase.type === 'Return') {
+        for (const item of purchase.items) {
+          const product = await Product.findById(item.productId || item._id);
+          if (product) {
+            product.quantity += item.quantity;
+            await product.save();
+          }
+        }
+      }
+
+      await Purchase.findByIdAndDelete(req.params.id);
+      res.json({ message: 'Purchase removed' });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  } else {
+    // In-memory fallback
+    const index = localPurchases.findIndex((p) => p._id === req.params.id);
+    if (index !== -1) {
+      localPurchases.splice(index, 1);
+    }
+    res.json({ message: 'Purchase removed' });
+  }
+};
+
+// @desc    Update a purchase
+// @route   PUT /api/purchases/:id
+// @access  Private
+const updatePurchase = async (req, res) => {
+  if (isDbConnected()) {
+    try {
+      const purchase = await Purchase.findById(req.params.id);
+      if (!purchase) {
+        return res.status(404).json({ message: 'Purchase not found' });
+      }
+
+      // Reverse old inventory
+      if (purchase.type === 'Bill' && purchase.status === 'Received') {
+        for (const item of purchase.items) {
+          const product = await Product.findById(item.productId || item._id);
+          if (product) {
+            product.quantity = Math.max(0, product.quantity - item.quantity);
+            await product.save();
+          }
+        }
+      } else if (purchase.type === 'Return') {
+        for (const item of purchase.items) {
+          const product = await Product.findById(item.productId || item._id);
+          if (product) {
+            product.quantity += item.quantity;
+            await product.save();
+          }
+        }
+      }
+
+      // Apply new inventory
+      const { purchaseOrderNumber, supplierName, type: docType, referenceNumber, items, totalAmount, paymentMethod, paymentStatus, status } = req.body;
+
+      if (docType === 'Bill' && status === 'Received') {
+        for (const item of items) {
+          const product = await Product.findById(item.productId || item._id);
+          if (product) {
+            product.quantity += Number(item.quantity);
+            await product.save();
+          }
+        }
+      } else if (docType === 'Return') {
+        for (const item of items) {
+          const product = await Product.findById(item.productId || item._id);
+          if (product) {
+            product.quantity = Math.max(0, product.quantity - Number(item.quantity));
+            await product.save();
+          }
+        }
+      }
+
+      purchase.purchaseOrderNumber = purchaseOrderNumber;
+      purchase.supplierName = supplierName;
+      purchase.type = docType;
+      purchase.referenceNumber = referenceNumber;
+      purchase.items = items;
+      purchase.totalAmount = totalAmount;
+      purchase.paymentMethod = paymentMethod;
+      purchase.paymentStatus = paymentStatus;
+      purchase.status = status;
+
+      const updatedPurchase = await purchase.save();
+      res.json(updatedPurchase);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  } else {
+    // In-memory fallback
+    const index = localPurchases.findIndex(p => p._id === req.params.id);
+    if (index !== -1) {
+      localPurchases[index] = { ...localPurchases[index], ...req.body, updatedAt: new Date() };
+      res.json(localPurchases[index]);
+    } else {
+      res.status(404).json({ message: 'Purchase not found' });
+    }
+  }
+};
+
 module.exports = {
   getPurchases,
   createPurchase,
   collectPayment,
+  deletePurchase,
+  updatePurchase,
 };

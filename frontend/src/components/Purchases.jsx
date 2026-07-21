@@ -7,13 +7,14 @@ import {
   Tag,
   Loader2,
   FileText,
-  DollarSign,
+  IndianRupee,
   History,
   RotateCcw,
   Filter,
   PlusCircle,
   Package,
   ChevronLeft,
+  Edit
 } from 'lucide-react';
 import { purchaseService, productService } from '../services/api';
 import toast from 'react-hot-toast';
@@ -29,6 +30,7 @@ const Purchases = ({ _isVapor, _user }) => {
   // view: 'list' | 'create' | 'payment' | 'quickadd'
   const [view, setView] = useState('list');
   const [modalDocType, setModalDocType] = useState('Bill');
+  const [editId, setEditId] = useState(null);
 
   // Create Document form state
   const [supplierName, setSupplierName] = useState('');
@@ -84,6 +86,7 @@ const Purchases = ({ _isVapor, _user }) => {
   const openCreatePage = (docType) => {
     setModalDocType(docType);
     resetForm();
+    setEditId(null);
     setView('create');
   };
 
@@ -154,16 +157,51 @@ const Purchases = ({ _isVapor, _user }) => {
       status: modalDocType === 'Order' ? 'Ordered' : 'Received',
     };
     try {
-      await purchaseService.createPurchase(payload);
       const labels = { Bill: 'Purchase Bill', Return: 'Purchase Return', DebitNote: 'Debit Note', Order: 'Purchase Order' };
-      toast.success(`${labels[modalDocType] || modalDocType} created successfully!`);
+      if (editId) {
+        await purchaseService.updatePurchase(editId, payload);
+        toast.success(`${labels[modalDocType] || modalDocType} updated successfully!`);
+      } else {
+        await purchaseService.createPurchase(payload);
+        toast.success(`${labels[modalDocType] || modalDocType} created successfully!`);
+      }
       setView('list');
+      setEditId(null);
       resetForm();
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create purchase document');
       console.error(error);
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this document? This will reverse any inventory changes.')) return;
+    try {
+      await purchaseService.deletePurchase(id);
+      toast.success('Document deleted successfully');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete document');
+      console.error(error);
+    }
+  };
+
+  const handleEdit = (doc) => {
+    setEditId(doc._id);
+    setModalDocType(doc.type);
+    setSupplierName(doc.supplierName);
+    setPaymentStatus(doc.paymentStatus);
+    setPaymentMethod(doc.paymentMethod);
+    setPoStatus(doc.status);
+    setReferenceNumber(doc.referenceNumber || '');
+    setItems(doc.items.map(i => ({
+      ...i,
+      productId: i.productId || i._id,
+      expiryDate: i.expiryDate ? new Date(i.expiryDate).toISOString().split('T')[0] : '',
+    })));
+    setView('create');
+    toast.success('Ready to edit document. Press Save when done.');
   };
 
   const handleCollectPayment = async (e) => {
@@ -228,7 +266,7 @@ const Purchases = ({ _isVapor, _user }) => {
 
   const tabs = [
     { id: 'bills',    label: 'Purchase Bills',   icon: FileText,   color: 'text-blue-600' },
-    { id: 'payments', label: 'Payments Out',      icon: DollarSign, color: 'text-rose-600' },
+    { id: 'payments', label: 'Payments Out',      icon: IndianRupee, color: 'text-rose-600' },
     { id: 'returns',  label: 'Purchase Returns',  icon: RotateCcw,  color: 'text-orange-600' },
     { id: 'debit',    label: 'Debit Notes',       icon: Tag,        color: 'text-purple-600' },
     { id: 'orders',   label: 'Purchase Orders',   icon: ShoppingBag,color: 'text-emerald-600' },
@@ -262,9 +300,7 @@ const Purchases = ({ _isVapor, _user }) => {
               <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider">Status</th>
               <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider">Payment</th>
               <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider">Date</th>
-              {activeSubTab === 'payments' && (
-                <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider">Action</th>
-              )}
+              <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
@@ -303,17 +339,32 @@ const Purchases = ({ _isVapor, _user }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-500">
                   {new Date(p.createdAt).toLocaleDateString()}
                 </td>
-                {activeSubTab === 'payments' && (
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                <td className="px-6 py-4 whitespace-nowrap text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    {activeSubTab === 'payments' && (
+                      <button
+                        onClick={() => openPaymentPage(p)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-sm transition-colors"
+                      >
+                        <IndianRupee size={12} /> Pay
+                      </button>
+                    )}
                     <button
-                      onClick={() => openPaymentPage(p)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-sm transition-colors"
+                      onClick={() => handleEdit(p)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-pharmacy-600 hover:bg-pharmacy-50 transition-colors"
+                      title="Edit Document"
                     >
-                      <DollarSign size={12} />
-                      Pay Bill
+                      <Edit size={16} />
                     </button>
-                  </td>
-                )}
+                    <button
+                      onClick={() => handleDelete(p._id)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="Delete Document"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -481,12 +532,12 @@ const Purchases = ({ _isVapor, _user }) => {
             {/* Footer */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl gap-3">
               <div className="text-sm font-bold text-pharmacy-700 flex items-center gap-2">
-                <DollarSign size={18} />
-                <span>Estimated Total: ${orderTotal.toFixed(2)}</span>
+                <IndianRupee size={18} />
+                <span>Estimated Total: ₹{orderTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={() => setView('list')} className="btn-secondary">Cancel</button>
-                <button type="submit" className="btn-primary">Save Document</button>
+                <button type="submit" className="btn-primary">{editId ? 'Update Document' : 'Save Document'}</button>
               </div>
             </div>
           </form>
@@ -512,7 +563,7 @@ const Purchases = ({ _isVapor, _user }) => {
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden max-w-lg">
           <div className="px-6 py-5 border-b border-gray-100">
             <h3 className="text-xl font-bold text-rose-700 flex items-center gap-2">
-              <DollarSign size={22} />
+              <IndianRupee size={22} />
               Pay Supplier Bill
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">Confirm payment to mark this invoice as paid.</p>
@@ -532,7 +583,7 @@ const Purchases = ({ _isVapor, _user }) => {
                 </div>
                 <div className="flex justify-between items-center border-t pt-3 mt-1">
                   <span className="text-gray-500 font-semibold">Amount Owed:</span>
-                  <span className="font-extrabold text-rose-600 text-xl">${paymentTarget.totalAmount?.toFixed(2)}</span>
+                  <span className="font-extrabold text-rose-600 text-xl">₹{paymentTarget.totalAmount?.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -561,7 +612,7 @@ const Purchases = ({ _isVapor, _user }) => {
   // ─── QUICK ADD ITEM PAGE ───────────────────────────────────────────────────
   if (view === 'quickadd') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[75vh] animate-fadeIn px-4">
+      <div className="flex flex-col items-center py-8 min-h-[75vh] animate-fadeIn px-4 sm:px-0">
         <div className="w-full max-w-xl mb-4">
           <button
             type="button"
@@ -645,7 +696,7 @@ const Purchases = ({ _isVapor, _user }) => {
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">Procurement Hub</h2>
           <p className="text-sm text-gray-500">Manage supplier purchase bills, returns, debit notes, orders, and payments out.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={openQuickAddPage}
             className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-pharmacy-600 border border-pharmacy-200 hover:bg-pharmacy-50 transition-all"
@@ -666,7 +717,7 @@ const Purchases = ({ _isVapor, _user }) => {
       </div>
 
       {/* Sub-Tab Switcher */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex overflow-x-auto gap-2 pb-1 vapor-scrollbar">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSubTab === tab.id;
@@ -674,7 +725,7 @@ const Purchases = ({ _isVapor, _user }) => {
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border transition-all ${
+              className={`whitespace-nowrap flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border transition-all flex-shrink-0 ${
                 isActive
                   ? 'bg-pharmacy-600 text-white border-pharmacy-600 shadow-sm'
                   : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
@@ -699,7 +750,7 @@ const Purchases = ({ _isVapor, _user }) => {
         <div className="space-y-4">
           <div className="p-4 rounded-xl border bg-white border-gray-200 shadow-sm">
             <h3 className="font-bold text-sm text-gray-500 flex items-center gap-2">
-              <DollarSign size={16} className="text-rose-600" />
+              <IndianRupee size={16} className="text-rose-600" />
               Collect Payments Out — Pending Supplier Bills
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">Settle outstanding supplier invoices and record cash outflows automatically.</p>

@@ -33,12 +33,16 @@ export const saleService = {
   getSales: () => api.get('/sales'),
   createSale: (data) => api.post('/sales', data),
   collectPayment: (id, paymentMethod) => api.put(`/sales/${id}/pay`, { paymentMethod }),
+  deleteSale: (id) => api.delete(`/sales/${id}`),
+  updateSale: (id, saleData) => api.put(`/sales/${id}`, saleData),
 };
 
 export const purchaseService = {
   getPurchases: () => api.get('/purchases'),
   createPurchase: (data) => api.post('/purchases', data),
   collectPayment: (id, paymentMethod) => api.put(`/purchases/${id}/pay`, { paymentMethod }),
+  deletePurchase: (id) => api.delete(`/purchases/${id}`),
+  updatePurchase: (id, purchaseData) => api.put(`/purchases/${id}`, purchaseData),
 };
 
 export const userService = {
@@ -50,12 +54,14 @@ export const userService = {
 export const expenseService = {
   getExpenses: () => api.get('/expenses'),
   createExpense: (data) => api.post('/expenses', data),
+  updateExpense: (id, data) => api.put(`/expenses/${id}`, data),
   deleteExpense: (id) => api.delete(`/expenses/${id}`),
 };
 
 export const cashService = {
   getCashTransactions: () => api.get('/cash'),
   createCashTransaction: (data) => api.post('/cash', data),
+  updateCashTransaction: (id, data) => api.put(`/cash/${id}`, data),
   deleteCashTransaction: (id) => api.delete(`/cash/${id}`),
 };
 

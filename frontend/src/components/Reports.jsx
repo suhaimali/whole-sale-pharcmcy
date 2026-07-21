@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   TrendingDown,
   ShoppingBag,
   Loader2,
   Clock,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Trash2
 } from 'lucide-react';
 import { saleService, purchaseService, expenseService } from '../services/api';
 import toast from 'react-hot-toast';
@@ -39,6 +40,28 @@ const Reports = ({ _isVapor, _user }) => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleDeleteTransaction = async (entity, id) => {
+    if (!window.confirm('Are you sure you want to delete this transaction record? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      if (entity === 'sale') {
+        await saleService.deleteSale(id);
+      } else if (entity === 'purchase') {
+        await purchaseService.deletePurchase(id);
+      } else if (entity === 'expense') {
+        await expenseService.deleteExpense(id);
+      }
+      
+      toast.success('Transaction record deleted successfully');
+      fetchData(); // Refresh the data
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete transaction record');
+    }
+  };
 
   // Calculations
   const revenue = sales
@@ -135,7 +158,7 @@ const Reports = ({ _isVapor, _user }) => {
             <div className={`p-5 rounded-xl border flex items-center justify-between ${cardClass}`}>
               <div>
                 <span className={`text-xs font-semibold uppercase tracking-wider ${subtextClass}`}>Total Revenue</span>
-                <h3 className="text-xl font-extrabold text-green-600">${revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                <h3 className="text-xl font-extrabold text-green-600">₹{revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
               </div>
               <div className="p-2.5 rounded-lg bg-green-50 text-green-600"><TrendingUp size={20} /></div>
             </div>
@@ -143,7 +166,7 @@ const Reports = ({ _isVapor, _user }) => {
             <div className={`p-5 rounded-xl border flex items-center justify-between ${cardClass}`}>
               <div>
                 <span className={`text-xs font-semibold uppercase tracking-wider ${subtextClass}`}>Inventory Procures</span>
-                <h3 className={`text-xl font-extrabold ${textClass}`}>${totalPurchases.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                <h3 className={`text-xl font-extrabold ${textClass}`}>₹{totalPurchases.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
               </div>
               <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600"><ShoppingBag size={20} /></div>
             </div>
@@ -151,7 +174,7 @@ const Reports = ({ _isVapor, _user }) => {
             <div className={`p-5 rounded-xl border flex items-center justify-between ${cardClass}`}>
               <div>
                 <span className={`text-xs font-semibold uppercase tracking-wider ${subtextClass}`}>Overhead Expenses</span>
-                <h3 className={`text-xl font-extrabold ${textClass}`}>${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                <h3 className={`text-xl font-extrabold ${textClass}`}>₹{totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
               </div>
               <div className="p-2.5 rounded-lg bg-red-50 text-red-600"><TrendingDown size={20} /></div>
             </div>
@@ -164,7 +187,7 @@ const Reports = ({ _isVapor, _user }) => {
                 </h3>
               </div>
               <div className={`p-2.5 rounded-lg ${netProfit >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                <DollarSign size={20} />
+                <IndianRupee size={20} />
               </div>
             </div>
           </div>
@@ -194,6 +217,7 @@ const Reports = ({ _isVapor, _user }) => {
                       <th className="px-6 py-3.5 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
                       <th className="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
                       <th className="px-6 py-3.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-3.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -217,8 +241,17 @@ const Reports = ({ _isVapor, _user }) => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <span className={`font-bold text-base ${item.entity === 'sale' && item.type !== 'Return' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                            {item.entity === 'sale' && item.type !== 'Return' ? '+' : '-'}₹{item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            {item.entity === 'sale' && item.type !== 'Return' ? '+' : '-'}${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => handleDeleteTransaction(item.entity, item.id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors inline-flex"
+                            title="Delete Transaction"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}

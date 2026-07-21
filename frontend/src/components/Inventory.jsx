@@ -84,7 +84,7 @@ const Inventory = ({ user }) => {
       price: p.price,
       costPrice: p.costPrice,
       batchNumber: p.batchNumber || '',
-      expiryDate: p.expiryDate ? new Date(p.expiryDate).toISOString().split('T')[0] : '',
+      expiryDate: p.expiryDate && !isNaN(new Date(p.expiryDate).getTime()) ? new Date(p.expiryDate).toISOString().split('T')[0] : '',
       supplier: p.supplier || '',
       description: p.description || '',
     });
@@ -271,10 +271,10 @@ const Inventory = ({ user }) => {
             className="pl-10 w-full rounded-lg text-sm border border-gray-300 bg-white p-2.5 focus:outline-none focus:ring-2 focus:ring-pharmacy-500/20 focus:border-pharmacy-500 transition-colors"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex overflow-x-auto gap-2 vapor-scrollbar pb-1">
           <button
             onClick={() => setCategory('')}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${!category ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}
+            className={`whitespace-nowrap flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${!category ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}
           >
             All Categories
           </button>
@@ -282,7 +282,7 @@ const Inventory = ({ user }) => {
             <button
               key={cat}
               onClick={() => setCategory(cat)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${category === cat ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}
+              className={`whitespace-nowrap flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${category === cat ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}
             >
               {cat}
             </button>
@@ -359,15 +359,15 @@ const Inventory = ({ user }) => {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex flex-col">
-                            <span className="font-bold text-gray-900">${p.price.toFixed(2)}</span>
-                            <span className="text-xs text-gray-400">(${p.costPrice.toFixed(2)})</span>
+                            <span className="font-bold text-gray-900">₹{p.price.toFixed(2)}</span>
+                            <span className="text-xs text-gray-400">(₹{p.costPrice.toFixed(2)})</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex flex-col items-center">
                             <span className="text-xs font-medium text-gray-700">{p.batchNumber || 'N/A'}</span>
                             <span className={`text-xs font-bold ${isExpired ? 'text-red-500' : 'text-gray-400'}`}>
-                              {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString() : 'N/A'}
+                              {p.expiryDate && !isNaN(new Date(p.expiryDate).getTime()) ? new Date(p.expiryDate).toLocaleDateString() : 'N/A'}
                             </span>
                           </div>
                         </td>
@@ -427,16 +427,16 @@ const Inventory = ({ user }) => {
                       <div>
                         <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wide">Batch / Expiry</span>
                         <span className={`font-medium truncate block ${isExpired ? 'text-red-500' : ''}`}>
-                          {p.batchNumber || 'N/A'} {p.expiryDate ? `(${new Date(p.expiryDate).toLocaleDateString()})` : ''}
+                          {p.batchNumber || 'N/A'} {p.expiryDate ? `(Exp: ${new Date(p.expiryDate).toLocaleDateString()})` : ''}
                         </span>
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wide">Retail Price</span>
-                        <span className="font-bold text-gray-900">${p.price.toFixed(2)}</span>
+                        <span className="font-bold text-gray-900">₹{p.price.toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wide">Cost Price</span>
-                        <span className="text-gray-500 font-medium">${p.costPrice.toFixed(2)}</span>
+                        <span className="text-gray-500 font-medium">₹{p.costPrice.toFixed(2)}</span>
                       </div>
                     </div>
 

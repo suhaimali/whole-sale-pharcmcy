@@ -12,7 +12,9 @@ import {
   ShieldCheck,
   Briefcase,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Menu,
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -31,6 +33,7 @@ const Dashboard = () => {
   
   // Tab Navigation State
   const [activeTab, setActiveTab] = useState('overview');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -118,12 +121,18 @@ const Dashboard = () => {
     <div className="min-h-screen flex flex-col font-sans transition-colors duration-300 bg-gray-50 text-gray-900">
       
       {/* Top Navbar */}
-      <nav className="fixed top-0 left-0 right-0 h-16 z-30 flex items-center justify-between px-6 bg-white border-b border-gray-200">
+      <nav className="fixed top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-4 md:px-6 bg-white border-b border-gray-200">
         <div className="flex items-center gap-3">
+          <button 
+            className="md:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
           <div className="flex h-9 w-9 items-center justify-center rounded-xl text-white bg-pharmacy-600">
             <Pill size={20} strokeWidth={2.5} />
           </div>
-          <span className="text-xl font-bold tracking-tight text-gray-900 flex items-center gap-1.5">
+          <span className="text-lg md:text-xl font-bold tracking-tight text-gray-900 flex items-center gap-1.5">
             Suhaim Soft ERP
           </span>
         </div>
@@ -149,10 +158,18 @@ const Dashboard = () => {
       </nav>
 
       {/* Main workspace layout */}
-      <div className="flex-1 flex pt-16">
+      <div className="flex-1 flex pt-16 relative">
         
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed top-16 bottom-0 left-0 right-0 bg-gray-900/50 z-40 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar Nav */}
-        <aside className="fixed top-16 bottom-0 left-0 w-64 z-20 hidden md:flex flex-col justify-between py-6 px-4 bg-white border-r border-gray-200">
+        <aside className={`fixed top-16 bottom-0 left-0 w-64 z-40 flex flex-col justify-between py-6 px-4 bg-white border-r border-gray-200 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:z-20`}>
           <div className="space-y-6">
             <span className="text-[10px] font-bold uppercase tracking-wider pl-2 text-gray-500">
               Enterprise Modules
@@ -166,7 +183,7 @@ const Dashboard = () => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${isActive ? 'bg-pharmacy-50 text-pharmacy-700 border-l-4 border-pharmacy-600' : 'text-gray-600 hover:bg-gray-100 border-l-4 border-transparent'}`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -194,43 +211,11 @@ const Dashboard = () => {
         </aside>
 
         {/* Content Panel */}
-        <main className="flex-1 min-w-0 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto">
+        <main className="flex-1 min-w-0 ml-0 md:ml-64 p-4 md:p-8 pb-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {renderActiveView()}
           </div>
         </main>
-
-        {/* Bottom Nav Bar for Mobile */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 z-30 flex justify-around items-center px-2 shadow-lg">
-          {allowedNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            
-            // Clean up name for short display
-            const displayName = 
-              item.id === 'overview' ? 'Home' :
-              item.id === 'inventory' ? 'Inventory' :
-              item.id === 'sales' ? 'Billing' :
-              item.id === 'purchases' ? 'Procure' :
-              item.id === 'expenses' ? 'Expenses' :
-              item.id === 'reports' ? 'Reports' :
-              item.id === 'cashbook' ? 'Cash' :
-              item.name;
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-semibold transition-all ${
-                  isActive ? 'text-pharmacy-600' : 'text-gray-500'
-                }`}
-              >
-                <Icon size={20} className={isActive ? 'text-pharmacy-600' : 'text-gray-400'} />
-                <span className="mt-1">{displayName}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
     </div>
   );

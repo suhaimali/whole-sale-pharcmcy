@@ -109,8 +109,50 @@ const deleteCashTransaction = async (req, res) => {
   }
 };
 
+// @desc    Update a cash transaction record
+// @route   PUT /api/cash/:id
+// @access  Private (Admin, Administrator)
+const updateCashTransaction = async (req, res) => {
+  const { txType, amount, source, referenceNumber, notes } = req.body;
+
+  if (isDbConnected()) {
+    try {
+      const tx = await CashTx.findById(req.params.id);
+      if (tx) {
+        tx.txType = txType || tx.txType;
+        if (amount !== undefined) tx.amount = Number(amount);
+        tx.source = source || tx.source;
+        tx.referenceNumber = referenceNumber !== undefined ? referenceNumber : tx.referenceNumber;
+        tx.notes = notes !== undefined ? notes : tx.notes;
+        
+        const updatedTx = await tx.save();
+        res.json(updatedTx);
+      } else {
+        res.status(404).json({ message: 'Cash record not found' });
+      }
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  } else {
+    // In-memory fallback
+    const index = localCashTxs.findIndex((tx) => tx._id === req.params.id);
+    if (index !== -1) {
+      localCashTxs[index].txType = txType || localCashTxs[index].txType;
+      if (amount !== undefined) localCashTxs[index].amount = Number(amount);
+      localCashTxs[index].source = source || localCashTxs[index].source;
+      localCashTxs[index].referenceNumber = referenceNumber !== undefined ? referenceNumber : localCashTxs[index].referenceNumber;
+      localCashTxs[index].notes = notes !== undefined ? notes : localCashTxs[index].notes;
+      localCashTxs[index].updatedAt = new Date();
+      res.json(localCashTxs[index]);
+    } else {
+      res.status(404).json({ message: 'Cash record not found' });
+    }
+  }
+};
+
 module.exports = {
   getCashTransactions,
   createCashTransaction,
+  updateCashTransaction,
   deleteCashTransaction,
 };

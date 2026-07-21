@@ -52,14 +52,12 @@ const createSale = async (req, res) => {
   const invoiceNumber = `${prefix}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
   if (isDbConnected()) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
     try {
       // 1. Process Inventory adjustment depending on transaction type
       if (docType === 'Invoice' || docType === 'Challan') {
         // Deduct Stock
         for (const item of items) {
-          const product = await Product.findById(item.productId).session(session);
+          const product = await Product.findById(item.productId);
           if (!product) {
             throw new Error(`Product ${item.name} not found`);
           }
@@ -67,15 +65,15 @@ const createSale = async (req, res) => {
             throw new Error(`Insufficient stock for ${product.name}. Available: ${product.quantity}, Requested: ${item.quantity}`);
           }
           product.quantity -= item.quantity;
-          await product.save({ session });
+          await product.save();
         }
       } else if (docType === 'Return') {
         // Refund/Add Stock back
         for (const item of items) {
-          const product = await Product.findById(item.productId).session(session);
+          const product = await Product.findById(item.productId);
           if (product) {
             product.quantity += item.quantity;
-            await product.save({ session });
+            await product.save();
           }
         }
       }
@@ -96,7 +94,7 @@ const createSale = async (req, res) => {
         salesRep: req.user.username,
       });
 
-      const createdSale = await sale.save({ session });
+      const createdSale = await sale.save();
 
       // 3. Create Cash record if paid in Cash
       const isCash = paymentMethod === 'Cash' || !paymentMethod;
@@ -112,16 +110,11 @@ const createSale = async (req, res) => {
           referenceNumber: invoiceNumber,
           notes,
           recordedBy: req.user.username,
-        }], { session });
+        }]);
       }
-
-      await session.commitTransaction();
-      session.endSession();
 
       res.status(201).json(createdSale);
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
       res.status(400).json({ message: error.message });
     }
   } else {
@@ -275,8 +268,54 @@ const collectPayment = async (req, res) => {
   }
 };
 
+// @desc    Delete a sale
+// @route   DELETE /api/sales/:id
+// @access  Private
+const deleteSale = async (req, res) => {
+  if (isDbConnected()) {
+    try {
+      const sale = await Sale.findById(req.params.id);
+      if (!sale) {
+        return res.status(404).json({ message: 'Sale document not found' });
+      }
+
+      // Reverse inventory deduction
+      if (sale.type === 'Invoice' || sale.type === 'Challan') {
+        for (const item of sale.items) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            product.quantity += item.quantity;
+            await product.save();
+          }
+        }
+      } else if (sale.type === 'Return') {
+        for (const item of sale.items) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            product.quantity -= item.quantity;
+            await product.save();
+          }
+        }
+      }
+
+      await Sale.findByIdAndDelete(req.params.id);
+      res.json({ message: 'Sale removed' });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  } else {
+    // In-memory fallback
+    const index = localSales.findIndex((s) => s._id === req.params.id);
+    if (index !== -1) {
+      localSales.splice(index, 1);
+    }
+    res.json({ message: 'Sale removed' });
+  }
+};
+
 module.exports = {
   getSales,
   createSale,
   collectPayment,
+  deleteSale,
 };

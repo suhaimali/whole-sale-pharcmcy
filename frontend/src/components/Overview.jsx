@@ -165,7 +165,7 @@ const Overview = ({ isVapor, user }) => {
         <div className={`p-6 rounded-xl border flex items-center justify-between ${cardBgClass} transition-all duration-300 hover:scale-[1.02]`}>
           <div className="space-y-1">
             <span className={`text-xs font-semibold uppercase tracking-wider ${labelTextClass}`}>Total Sales</span>
-            <h3 className={`text-2xl font-bold ${valueTextClass}`}>${stats.totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <h3 className={`text-2xl font-bold ${valueTextClass}`}>₹{stats.totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
           </div>
           <div className={`p-3 rounded-lg ${isVapor ? 'bg-purple-950/50 text-purple-400 border border-purple-500/30' : 'bg-blue-50 text-blue-600'}`}>
             <TrendingUp size={24} />
@@ -176,7 +176,7 @@ const Overview = ({ isVapor, user }) => {
         <div className={`p-6 rounded-xl border flex items-center justify-between ${cardBgClass} transition-all duration-300 hover:scale-[1.02]`}>
           <div className="space-y-1">
             <span className={`text-xs font-semibold uppercase tracking-wider ${labelTextClass}`}>Stock Value</span>
-            <h3 className={`text-2xl font-bold ${valueTextClass}`}>${stats.inventoryValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <h3 className={`text-2xl font-bold ${valueTextClass}`}>₹{stats.inventoryValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
           </div>
           <div className={`p-3 rounded-lg ${isVapor ? 'bg-pink-950/50 text-pink-400 border border-pink-500/30' : 'bg-green-50 text-green-600'}`}>
             <Package size={24} />

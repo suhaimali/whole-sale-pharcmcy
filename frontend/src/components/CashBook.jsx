@@ -3,18 +3,19 @@ import {
   Plus,
   Minus,
   Trash2,
-  DollarSign,
+  IndianRupee,
   Loader2,
   ArrowDownLeft,
   ArrowUpRight,
   Clock,
   ChevronLeft,
   Save,
+  Edit2
 } from 'lucide-react';
 import { cashService } from '../services/api';
 import toast from 'react-hot-toast';
 
-const CashBook = ({ _isVapor, user }) => {
+const CashBook = ({ _isVapor, _user }) => {
   const [transactions, setTransactions] = useState([]);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,7 @@ const CashBook = ({ _isVapor, user }) => {
   // view: 'list' | 'transaction'
   const [view, setView] = useState('list');
   const [modalType, setModalType] = useState('Cash In'); // 'Cash In' or 'Cash Out'
+  const [editingId, setEditingId] = useState(null);
 
   // Form states
   const [amount, setAmount] = useState('');
@@ -47,16 +49,26 @@ const CashBook = ({ _isVapor, user }) => {
     fetchCashData();
   }, []);
 
-  const handleOpenTransactionPage = (type) => {
+  const handleOpenTransactionPage = (type, tx = null) => {
     setModalType(type);
-    setSource(type === 'Cash In' ? 'Deposit' : 'Withdrawal');
-    setAmount('');
-    setReferenceNumber('');
-    setNotes('');
+    if (tx) {
+      setSource(tx.source);
+      setAmount(tx.amount);
+      setReferenceNumber(tx.referenceNumber || '');
+      setNotes(tx.notes || '');
+      setEditingId(tx._id);
+    } else {
+      setSource(type === 'Cash In' ? 'Deposit' : 'Withdrawal');
+      setAmount('');
+      setReferenceNumber('');
+      setNotes('');
+      setEditingId(null);
+    }
     setView('transaction');
   };
 
   const handleCancel = () => {
+    setEditingId(null);
     setView('list');
   };
 
@@ -77,8 +89,14 @@ const CashBook = ({ _isVapor, user }) => {
         notes,
       };
 
-      await cashService.createCashTransaction(payload);
-      toast.success(`${modalType} successfully logged!`);
+      if (editingId) {
+        await cashService.updateCashTransaction(editingId, payload);
+        toast.success(`${modalType} successfully updated!`);
+      } else {
+        await cashService.createCashTransaction(payload);
+        toast.success(`${modalType} successfully logged!`);
+      }
+      setEditingId(null);
       setView('list');
       fetchCashData();
     } catch (error) {
@@ -117,7 +135,7 @@ const CashBook = ({ _isVapor, user }) => {
   // ─── TRANSACTION RECORDING PAGE (CENTERED) ──────────────────────────────────
   if (view === 'transaction') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fadeIn px-4">
+      <div className="flex flex-col items-center py-8 min-h-[70vh] animate-fadeIn px-4 sm:px-0">
         {/* Back Button */}
         <div className="w-full max-w-md mb-4">
           <button
@@ -135,10 +153,10 @@ const CashBook = ({ _isVapor, user }) => {
             <div className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-3 ${
               modalType === 'Cash In' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
             }`}>
-              <DollarSign size={24} />
+              <IndianRupee size={24} />
             </div>
-            <h3 className="text-xl font-bold text-gray-900">Record {modalType}</h3>
-            <p className="text-sm text-gray-500 mt-1">Log a manual transaction to reconcile your cash book.</p>
+            <h3 className="text-xl font-bold text-gray-900">{editingId ? 'Edit' : 'Record'} {modalType}</h3>
+            <p className="text-sm text-gray-500 mt-1">{editingId ? 'Update this manual transaction record.' : 'Log a manual transaction to reconcile your cash book.'}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -215,7 +233,7 @@ const CashBook = ({ _isVapor, user }) => {
                 }`}
               >
                 <Save size={14} />
-                Confirm {modalType}
+                {editingId ? `Update ${modalType}` : `Confirm ${modalType}`}
               </button>
             </div>
           </form>
@@ -233,7 +251,7 @@ const CashBook = ({ _isVapor, user }) => {
           <h2 className={`text-2xl font-bold tracking-tight ${textClass}`}>Cash Book Ledger</h2>
           <p className={`text-sm ${subtextClass}`}>Manage cash safe boxes, track cash-in-hand transactions, and reconcile drawer float.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <button
             onClick={() => handleOpenTransactionPage('Cash In')}
             className="flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all bg-emerald-600 hover:bg-emerald-500"
@@ -258,11 +276,11 @@ const CashBook = ({ _isVapor, user }) => {
           <div>
             <span className={`text-xs font-semibold uppercase tracking-wider ${subtextClass}`}>Cash in Hand</span>
             <h3 className={`text-3xl font-extrabold mt-1 ${balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ₹{balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
           </div>
           <div className={`p-3 rounded-lg ${balance >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-            <DollarSign size={26} />
+            <IndianRupee size={26} />
           </div>
         </div>
 
@@ -270,7 +288,7 @@ const CashBook = ({ _isVapor, user }) => {
           <div>
             <span className={`text-xs font-semibold uppercase tracking-wider ${subtextClass}`}>Total Cash Inflow</span>
             <h3 className="text-2xl font-extrabold mt-1 text-emerald-600">
-              +${cashInTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              +₹{cashInTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
           </div>
           <div className="p-3 rounded-lg bg-emerald-50 text-emerald-600">
@@ -282,7 +300,7 @@ const CashBook = ({ _isVapor, user }) => {
           <div>
             <span className={`text-xs font-semibold uppercase tracking-wider ${subtextClass}`}>Total Cash Outflow</span>
             <h3 className="text-2xl font-extrabold mt-1 text-rose-600">
-              -${cashOutTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              -₹{cashOutTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </h3>
           </div>
           <div className="p-3 rounded-lg bg-rose-50 text-rose-600">
@@ -362,10 +380,17 @@ const CashBook = ({ _isVapor, user }) => {
                     <td className={`px-6 py-4 text-right font-extrabold ${
                       tx.txType === 'Cash In' ? 'text-emerald-600' : 'text-rose-600'
                     }`}>
-                      {tx.txType === 'Cash In' ? '+' : '-'}${tx.amount.toFixed(2)}
+                      {tx.txType === 'Cash In' ? '+' : '-'}₹{tx.amount.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {user.role === 'Administrator' ? (
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => handleOpenTransactionPage(tx.txType, tx)}
+                          title="Edit cash entry"
+                          className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                        >
+                          <Edit2 size={13} />
+                        </button>
                         <button
                           onClick={() => handleDelete(tx._id)}
                           title="Delete cash entry"
@@ -373,9 +398,7 @@ const CashBook = ({ _isVapor, user }) => {
                         >
                           <Trash2 size={13} />
                         </button>
-                      ) : (
-                        <span className="text-[10px] text-gray-400 font-mono">Locked</span>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}

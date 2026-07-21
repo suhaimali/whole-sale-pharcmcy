@@ -8,17 +8,20 @@ import {
   Receipt,
   User,
   CreditCard,
-  X,
-  Printer,
   Package,
   History,
-  DollarSign,
+  Edit,
+  IndianRupee,
   Filter,
   FileText,
   ChevronLeft,
+  X,
+  Printer
 } from 'lucide-react';
 import { productService, saleService } from '../services/api';
 import toast from 'react-hot-toast';
+import QuickAddMissingItem from './QuickAddMissingItem';
+import PosCheckoutCart from './PosCheckoutCart';
 
 const Sales = ({ _isVapor, _user }) => {
   const [activeSubTab, setActiveSubTab] = useState('pos'); // 'pos', 'history', 'payments-in'
@@ -40,8 +43,8 @@ const Sales = ({ _isVapor, _user }) => {
   const [docType, setDocType] = useState('Invoice');
   const [referenceNumber, setReferenceNumber] = useState('');
 
-  // Mobile Cart Drawer State
-  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  //  const [taxRate, setTaxRate] = useState(10);
+  const [editId, setEditId] = useState(null);
 
   // Payments In State
   const [paymentTarget, setPaymentTarget] = useState(null);
@@ -164,7 +167,7 @@ const Sales = ({ _isVapor, _user }) => {
       customerName, type: docType,
       referenceNumber: docType === 'Return' ? referenceNumber : '',
       items: cart.map((item) => ({
-        productId: item.productId, name: item.name,
+        productId: item.productId || item._id, name: item.name,
         quantity: item.quantity, price: item.price,
       })),
       subTotal: Number(subTotal.toFixed(2)),
@@ -175,17 +178,29 @@ const Sales = ({ _isVapor, _user }) => {
       paymentStatus: (docType === 'Estimate' || docType === 'Order') ? 'Pending' : 'Paid',
     };
     try {
-      const res = await saleService.createSale(salePayload);
-      toast.success(`${docType} processed successfully!`);
-      setActiveInvoice(res.data);
+      if (editId) {
+        await saleService.updateSale(editId, salePayload);
+        toast.success(`${docType} updated successfully!`);
+      } else {
+        const res = await saleService.createSale(salePayload);
+        setActiveInvoice(res.data);
+        toast.success(`${docType} processed successfully!`);
+      }
+      
       setCart([]);
       setCustomerName('Walk-in Customer');
       setDiscount(0);
       setReferenceNumber('');
       setDocType('Invoice');
       setIsMobileCartOpen(false);
-      setView('invoice');
+      setEditId(null);
+      if (!editId) {
+        setView('invoice');
+      } else {
+        setView('list');
+      }
       fetchProducts();
+      fetchSalesList();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Checkout failed');
       console.error(error);
@@ -205,6 +220,34 @@ const Sales = ({ _isVapor, _user }) => {
       console.error(error);
       toast.error('Failed to submit receipt payment');
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this sales document? This will reverse inventory changes.')) return;
+    try {
+      await saleService.deleteSale(id);
+      toast.success('Document deleted successfully');
+      fetchSalesList();
+    } catch (error) {
+      toast.error('Failed to delete document');
+      console.error(error);
+    }
+  };
+
+  const handleEdit = (doc) => {
+    setEditId(doc._id);
+    setDocType(doc.type || 'Invoice');
+    setCustomerName(doc.customerName);
+    setReferenceNumber(doc.referenceNumber || '');
+    setDiscount(doc.discount || 0);
+    setPaymentMethod(doc.paymentMethod || 'Cash');
+    setCart(doc.items.map(i => ({
+      ...i,
+      productId: i.productId || i._id,
+    })));
+    setActiveSubTab('pos');
+    setView('list');
+    toast.success('Ready to edit document. Press Save when done.');
   };
 
   const handleQuickAddSubmit = async (e) => {
@@ -362,8 +405,8 @@ const Sales = ({ _isVapor, _user }) => {
                       <tr key={idx}>
                         <td className="px-3 py-2 font-medium text-gray-900">{item.name}</td>
                         <td className="px-3 py-2 text-center text-gray-700">{item.quantity}</td>
-                        <td className="px-3 py-2 text-right text-gray-700">${item.price.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-gray-900">${(item.quantity * item.price).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right text-gray-700">₹{item.price.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-gray-900">₹{(item.quantity * item.price).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -374,21 +417,21 @@ const Sales = ({ _isVapor, _user }) => {
             <div className="border-t pt-3 space-y-1.5 text-xs text-right pr-2">
               <div className="flex justify-end gap-6 text-gray-500">
                 <span>Subtotal:</span>
-                <span className="font-semibold text-gray-900 w-20">${activeInvoice.subTotal.toFixed(2)}</span>
+                <span className="font-semibold text-gray-900 w-20">₹{activeInvoice.subTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-end gap-6 text-gray-500">
                 <span>Tax (5%):</span>
-                <span className="font-semibold text-gray-900 w-20">${activeInvoice.tax.toFixed(2)}</span>
+                <span className="font-semibold text-gray-900 w-20">₹{activeInvoice.tax.toFixed(2)}</span>
               </div>
               {activeInvoice.discount > 0 && (
                 <div className="flex justify-end gap-6 text-red-500">
                   <span>Discount:</span>
-                  <span className="w-20">-${activeInvoice.discount.toFixed(2)}</span>
+                  <span className="w-20">-₹{activeInvoice.discount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-end gap-6 font-bold text-sm border-t pt-2 border-gray-200">
                 <span>Grand Total:</span>
-                <span className="text-pharmacy-700 w-20">${activeInvoice.totalAmount.toFixed(2)}</span>
+                <span className="text-pharmacy-700 w-20">₹{activeInvoice.totalAmount.toFixed(2)}</span>
               </div>
             </div>
 
@@ -436,7 +479,7 @@ const Sales = ({ _isVapor, _user }) => {
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden max-w-lg mx-auto">
           <div className="px-6 py-5 border-b border-gray-100">
             <h3 className="text-xl font-bold text-pharmacy-700 flex items-center gap-2">
-              <DollarSign size={22} />
+              <IndianRupee size={22} />
               Collect Payment In
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">Settle outstanding balance and mark this invoice as paid.</p>
@@ -455,7 +498,7 @@ const Sales = ({ _isVapor, _user }) => {
                 </div>
                 <div className="flex justify-between items-center border-t pt-3 mt-1">
                   <span className="text-gray-500 font-semibold">Outstanding Balance:</span>
-                  <span className="font-extrabold text-rose-600 text-xl">${paymentTarget.totalAmount.toFixed(2)}</span>
+                  <span className="font-extrabold text-rose-600 text-xl">₹{paymentTarget.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -490,101 +533,13 @@ const Sales = ({ _isVapor, _user }) => {
   // ─── QUICK ADD PRODUCT PAGE ────────────────────────────────────────────────
   if (view === 'quickadd') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[75vh] animate-fadeIn px-4">
-        <div className="w-full max-w-xl mb-4">
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all text-xs font-semibold text-gray-700 flex items-center gap-1.5 bg-white shadow-sm"
-          >
-            <ChevronLeft size={14} /> Back to POS
-          </button>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden w-full max-w-xl">
-          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-pharmacy-50 text-pharmacy-600 mb-3">
-              <Package size={24} />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900">Quick Add Missing Product</h3>
-            <p className="text-sm text-gray-500 mt-1">Register a missing item and it will be auto-added to your cart.</p>
-          </div>
-
-          <form onSubmit={handleQuickAddSubmit}>
-            <div className="px-6 py-6 space-y-5">
-              <div>
-                <label className="block text-xs font-semibold mb-1.5 text-gray-700">Product Name <span className="text-red-500">*</span></label>
-                <input
-                  type="text" required value={quickForm.name}
-                  onChange={(e) => setQuickForm({ ...quickForm, name: e.target.value })}
-                  placeholder="e.g. Paracetamol 500mg"
-                  className="block w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none transition-colors"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5 text-gray-700">SKU / Barcode <span className="text-red-500">*</span></label>
-                  <input type="text" required value={quickForm.sku}
-                    onChange={(e) => setQuickForm({ ...quickForm, sku: e.target.value })}
-                    placeholder="PCT-500-BOX"
-                    className="block w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5 text-gray-700">Packaging Unit</label>
-                  <select value={quickForm.unit} onChange={(e) => setQuickForm({ ...quickForm, unit: e.target.value })}
-                    className="block w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none transition-colors">
-                    {['Piece','Box','Bottle','Strip','Tablet','Vial','Pack'].map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5 text-gray-700">Category</label>
-                  <select value={quickForm.category} onChange={(e) => setQuickForm({ ...quickForm, category: e.target.value })}
-                    className="block w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none transition-colors">
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5 text-gray-700">Stock Quantity <span className="text-red-500">*</span></label>
-                  <input type="number" required min="1" value={quickForm.quantity}
-                    onChange={(e) => setQuickForm({ ...quickForm, quantity: e.target.value })}
-                    placeholder="100"
-                    className="block w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5 text-gray-700">Cost Price (₹) <span className="text-red-500">*</span></label>
-                  <input type="number" step="0.01" min="0" required value={quickForm.costPrice}
-                    onChange={(e) => setQuickForm({ ...quickForm, costPrice: e.target.value })}
-                    placeholder="5.50"
-                    className="block w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5 text-gray-700">Selling Price (₹) <span className="text-red-500">*</span></label>
-                  <input type="number" step="0.01" min="0" required value={quickForm.price}
-                    onChange={(e) => setQuickForm({ ...quickForm, price: e.target.value })}
-                    placeholder="10.00"
-                    className="block w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm text-gray-900 focus:border-pharmacy-500 focus:ring-2 focus:ring-pharmacy-500/20 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-              <button type="button" onClick={() => setView('list')} className="btn-secondary">Cancel</button>
-              <button type="submit" className="btn-primary">Create & Add to POS</button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <QuickAddMissingItem
+        setView={setView}
+        handleQuickAddSubmit={handleQuickAddSubmit}
+        quickForm={quickForm}
+        setQuickForm={setQuickForm}
+        categories={categories}
+      />
     );
   }
 
@@ -611,33 +566,39 @@ const Sales = ({ _isVapor, _user }) => {
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">Sales Department Hub</h2>
           <p className="text-sm text-gray-500">Process POS invoicing, track documents timeline, collect customer payments.</p>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+        <div className="flex bg-gray-100 p-1 rounded-xl w-fit max-w-full overflow-x-auto vapor-scrollbar">
           <button
             onClick={() => setActiveSubTab('pos')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === 'pos' ? 'bg-white shadow text-pharmacy-700' : 'text-gray-600 hover:text-gray-900'}`}
+            className={`whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === 'pos' ? 'bg-white shadow text-pharmacy-700' : 'text-gray-600 hover:text-gray-900'}`}
           >
             <ShoppingCart size={14} /> Mobile POS Terminal
           </button>
           <button
             onClick={() => setActiveSubTab('history')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === 'history' ? 'bg-white shadow text-pharmacy-700' : 'text-gray-600 hover:text-gray-900'}`}
+            className={`whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === 'history' ? 'bg-white shadow text-pharmacy-700' : 'text-gray-600 hover:text-gray-900'}`}
           >
             <History size={14} /> Invoices & Documents
           </button>
           <button
             onClick={() => setActiveSubTab('payments-in')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === 'payments-in' ? 'bg-white shadow text-pharmacy-700' : 'text-gray-600 hover:text-gray-900'}`}
+            className={`whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === 'payments-in' ? 'bg-white shadow text-pharmacy-700' : 'text-gray-600 hover:text-gray-900'}`}
           >
-            <DollarSign size={14} /> Payments In Ledger
+            <IndianRupee size={14} /> Payments In Ledger
+          </button>
+          <button
+            onClick={() => setActiveSubTab('cart')}
+            className={`lg:hidden whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === 'cart' ? 'bg-white shadow text-pharmacy-700' : 'text-gray-600 hover:text-gray-900'}`}
+          >
+            <ShoppingCart size={14} /> Cart Checkout ({cart.reduce((s, i) => s + i.quantity, 0)})
           </button>
         </div>
       </div>
 
       {/* TAB 1: POS WORKSPACE */}
-      {activeSubTab === 'pos' && (
+      {(activeSubTab === 'pos' || activeSubTab === 'cart') && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left Column: Product Selector */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className={`lg:col-span-7 space-y-4 ${activeSubTab === 'cart' ? 'hidden lg:block' : 'block'}`}>
             <div className={`p-4 rounded-xl border flex flex-col gap-3 ${cardClass}`}>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -649,14 +610,14 @@ const Sales = ({ _isVapor, _user }) => {
                   className={`pl-10 w-full rounded-lg text-sm border p-2 bg-transparent focus:outline-none focus:ring-2 border-gray-300 focus:ring-pharmacy-500 focus:border-pharmacy-500`}
                 />
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex overflow-x-auto gap-1.5 pb-1 vapor-scrollbar">
                 <button onClick={() => setCategory('')}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold border transition-all ${!category ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                  className={`whitespace-nowrap flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold border transition-all ${!category ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
                   All Categories
                 </button>
                 {categories.map((cat) => (
                   <button key={cat} onClick={() => setCategory(cat)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold border transition-all ${category === cat ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                    className={`whitespace-nowrap flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold border transition-all ${category === cat ? 'bg-pharmacy-600 border-pharmacy-600 text-white' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
                     {cat}
                   </button>
                 ))}
@@ -684,7 +645,7 @@ const Sales = ({ _isVapor, _user }) => {
                       <div>
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <span className="font-semibold text-sm text-gray-900">{p.name}</span>
-                          <span className="text-xs font-bold text-pharmacy-600">${p.price.toFixed(2)}</span>
+                          <span className="text-xs font-bold text-pharmacy-600">₹{p.price.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs font-mono mb-2">
                           <span className={subtextClass}>{p.sku}</span>
@@ -732,14 +693,14 @@ const Sales = ({ _isVapor, _user }) => {
                     <div key={item.productId} className="py-3 flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <h5 className="text-xs font-semibold truncate text-gray-900">{item.name}</h5>
-                        <p className={`text-[10px] ${subtextClass}`}>{item.sku} | ${item.price.toFixed(2)} ea</p>
+                        <p className={`text-[10px] ${subtextClass}`}>{item.sku} | ₹{item.price.toFixed(2)} ea</p>
                       </div>
                       <div className="flex items-center gap-2 border rounded-lg px-1 py-0.5 border-gray-300">
                         <button onClick={() => updateCartQty(item.productId, -1)} className="p-0.5 rounded-full hover:bg-gray-200"><Minus size={12} /></button>
                         <span className="text-xs font-bold w-6 text-center text-gray-900">{item.quantity}</span>
                         <button onClick={() => updateCartQty(item.productId, 1)} className="p-0.5 rounded-full hover:bg-gray-200"><Plus size={12} /></button>
                       </div>
-                      <span className="text-xs font-extrabold w-16 text-right text-gray-900">${(item.price * item.quantity).toFixed(2)}</span>
+                      <span className="text-xs font-extrabold w-16 text-right text-gray-900">₹{(item.price * item.quantity).toFixed(2)}</span>
                       <button onClick={() => removeFromCart(item.productId)} className="p-1 rounded-full text-red-500 hover:bg-red-50"><Trash2 size={14} /></button>
                     </div>
                   ))
@@ -795,131 +756,52 @@ const Sales = ({ _isVapor, _user }) => {
 
                 <div className="bg-gray-50 p-3 rounded-lg border text-xs space-y-1.5 border-gray-100">
                   <div className="flex justify-between text-gray-600">
-                    <span>Subtotal:</span><span>${subTotal.toFixed(2)}</span>
+                    <span>Subtotal:</span><span>₹{subTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
-                    <span>Tax ({taxRate}%):</span><span>+${taxAmount.toFixed(2)}</span>
+                    <span>Tax ({taxRate}%):</span><span>+₹{taxAmount.toFixed(2)}</span>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-red-600">
-                      <span>Discount:</span><span>-${Number(discount).toFixed(2)}</span>
+                      <span>Discount:</span><span>-₹{Number(discount).toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-sm text-gray-900 border-t pt-1.5 mt-1 border-gray-200">
-                    <span>Due Total:</span><span>${totalAmount.toFixed(2)}</span>
+                    <span>Due Total:</span><span>₹{totalAmount.toFixed(2)}</span>
                   </div>
                 </div>
 
                 <button onClick={handleCheckout} disabled={cart.length === 0}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-white shadow bg-pharmacy-600 hover:bg-pharmacy-500 disabled:opacity-50">
-                  <ShoppingCart size={16} /> Print & Save {docType}
+                  <ShoppingCart size={16} /> {editId ? 'Update & Save' : `Print & Save ${docType}`}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Mobile Cart Bar */}
-          <div className="lg:hidden fixed bottom-16 left-0 right-0 h-14 bg-white border-t flex items-center justify-between px-4 z-40 shadow-lg border-gray-200">
-            <div className="flex items-center gap-2">
-              <div className="relative p-2 bg-pharmacy-50 rounded-lg text-pharmacy-600">
-                <ShoppingCart size={18} />
-                {cart.length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-pharmacy-600 text-[8px] font-bold text-white">
-                    {cart.reduce((sum, i) => sum + i.quantity, 0)}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="text-[10px] text-gray-400 font-bold uppercase">Cart Total</span>
-                <span className="text-sm font-extrabold text-gray-900">${totalAmount.toFixed(2)}</span>
-              </div>
-            </div>
-            <button onClick={() => setIsMobileCartOpen(true)} className="px-4 py-2 bg-pharmacy-600 text-white rounded-lg text-xs font-bold">
-              Configure & Pay
-            </button>
-          </div>
-
-          {/* Mobile Cart Drawer */}
-          {isMobileCartOpen && (
-            <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs lg:hidden">
-              <div className="w-full max-w-md bg-white h-full p-5 flex flex-col justify-between shadow-2xl animate-slideLeft">
-                <div>
-                  <div className="flex items-center justify-between border-b pb-3 mb-4">
-                    <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
-                      <ShoppingCart size={18} className="text-pharmacy-600" /> POS Checkout Cart
-                    </h3>
-                    <button onClick={() => setIsMobileCartOpen(false)} className="p-1 rounded-full hover:bg-gray-100"><X size={20} /></button>
-                  </div>
-                  <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-1">
-                    {cart.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-10">Cart is empty. Select products on the POS grid.</p>
-                    ) : (
-                      cart.map((item) => (
-                        <div key={item.productId} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                          <div className="min-w-0 flex-1">
-                            <h5 className="font-semibold truncate text-gray-900">{item.name}</h5>
-                            <span className="text-[9px] text-gray-400 font-mono">${item.price.toFixed(2)} ea</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 border rounded-lg px-1 py-0.5">
-                            <button onClick={() => updateCartQty(item.productId, -1)} className="p-0.5"><Minus size={10} /></button>
-                            <span className="font-bold w-4 text-center">{item.quantity}</span>
-                            <button onClick={() => updateCartQty(item.productId, 1)} className="p-0.5"><Plus size={10} /></button>
-                          </div>
-                          <span className="font-extrabold text-right w-14">${(item.price * item.quantity).toFixed(2)}</span>
-                          <button onClick={() => removeFromCart(item.productId)} className="text-red-500"><Trash2 size={12} /></button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <div className="border-t pt-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[8px] uppercase font-bold mb-0.5 text-gray-500">Doc Type</label>
-                      <select value={docType} onChange={(e) => setDocType(e.target.value)} className={inputClass}>
-                        <option value="Invoice">Sales Invoice</option>
-                        <option value="Return">Sales Return</option>
-                        <option value="Estimate">Estimate</option>
-                        <option value="Order">Sales Order</option>
-                        <option value="Challan">Delivery Challan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[8px] uppercase font-bold mb-0.5 text-gray-500">Reference</label>
-                      <input type="text" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Optional ref" className={inputClass} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[8px] uppercase font-bold mb-0.5 text-gray-500">Customer Name</label>
-                    <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Walk-in Customer" className={inputClass} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[8px] uppercase font-bold mb-0.5 text-gray-500">Pay Method</label>
-                      <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={inputClass}>
-                        <option value="Cash">Cash</option>
-                        <option value="Card">Card</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
-                        <option value="Credit">Credit</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[8px] uppercase font-bold mb-0.5 text-gray-500">Discount</label>
-                      <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" className={inputClass} />
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 p-2 rounded-lg border text-[10px] space-y-1">
-                    <div className="flex justify-between"><span>Subtotal:</span><span>${subTotal.toFixed(2)}</span></div>
-                    <div className="flex justify-between font-bold text-sm border-t pt-1 text-gray-900 border-gray-200">
-                      <span>Total:</span><span>${totalAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                  <button onClick={handleCheckout} disabled={cart.length === 0}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold text-white bg-pharmacy-600 hover:bg-pharmacy-500 disabled:opacity-50">
-                    Confirm & Complete Checkout
-                  </button>
-                </div>
-              </div>
+          {/* Mobile Cart View (Replaces product grid on mobile) */}
+          {activeSubTab === 'cart' && (
+            <div className="lg:hidden">
+              <PosCheckoutCart
+                setIsMobileCartOpen={() => setActiveSubTab('pos')}
+                cart={cart}
+                updateCartQty={updateCartQty}
+                removeFromCart={removeFromCart}
+                docType={docType}
+                setDocType={setDocType}
+                referenceNumber={referenceNumber}
+                setReferenceNumber={setReferenceNumber}
+                customerName={customerName}
+                setCustomerName={setCustomerName}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                discount={discount}
+                setDiscount={setDiscount}
+                subTotal={subTotal}
+                totalAmount={totalAmount}
+                handleCheckout={handleCheckout}
+                inputClass={inputClass}
+              />
             </div>
           )}
         </div>
@@ -989,20 +871,29 @@ const Sales = ({ _isVapor, _user }) => {
                             'bg-green-50 text-green-700 border border-green-200'
                           }`}>{s.type || 'Invoice'}</span>
                         </td>
-                        <td className="px-6 py-4 text-right font-bold text-gray-900">${s.totalAmount.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right font-bold text-gray-900">₹{s.totalAmount.toFixed(2)}</td>
                         <td className="px-6 py-4 text-center">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${s.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-50 text-yellow-800'}`}>
                             {s.paymentStatus || 'Paid'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => { setActiveInvoice(s); setView('invoice'); }}
-                            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-pharmacy-50 hover:text-pharmacy-600 transition-colors"
-                            title="View / Reprint receipt"
-                          >
-                            <Printer size={14} />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(s)}
+                              className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:bg-pharmacy-50 hover:text-pharmacy-600 transition-colors"
+                              title="Edit Document"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(s._id)}
+                              className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Delete Document"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1019,7 +910,7 @@ const Sales = ({ _isVapor, _user }) => {
         <div className="space-y-4">
           <div className="p-4 rounded-xl border bg-white border-gray-200 shadow-sm">
             <h3 className="font-bold text-sm uppercase tracking-wider text-gray-500 flex items-center gap-2">
-              <DollarSign size={16} className="text-pharmacy-600" />
+              <IndianRupee size={16} className="text-pharmacy-600" />
               Collect Outstanding Sales Payments
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">Collect receipts payments against pending estimates, delivery orders, or unpaid invoices.</p>
@@ -1027,7 +918,7 @@ const Sales = ({ _isVapor, _user }) => {
           <div className="overflow-hidden border rounded-xl bg-white border-gray-200 shadow-sm">
             {pendingPayments.length === 0 ? (
               <div className="text-center py-16">
-                <DollarSign size={48} className="mx-auto mb-4 text-gray-300" />
+                <IndianRupee size={48} className="mx-auto mb-4 text-gray-300" />
                 <h3 className="text-lg font-semibold text-gray-900">No Outstanding Payments</h3>
                 <p className="text-sm text-gray-500 mt-1">All processed sales documents have been fully settled.</p>
               </div>
@@ -1054,7 +945,7 @@ const Sales = ({ _isVapor, _user }) => {
                         <td className="px-6 py-4 text-center">
                           <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200">{s.type}</span>
                         </td>
-                        <td className="px-6 py-4 text-right font-extrabold text-rose-600">${s.totalAmount.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right font-extrabold text-rose-600">₹{s.totalAmount.toFixed(2)}</td>
                         <td className="px-6 py-4 text-center">
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{s.paymentStatus}</span>
                         </td>
@@ -1063,7 +954,7 @@ const Sales = ({ _isVapor, _user }) => {
                             onClick={() => { setPaymentTarget(s); setCollectMethod('Cash'); setView('payment'); }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-pharmacy-600 hover:bg-pharmacy-500 shadow-sm"
                           >
-                            <DollarSign size={12} /> Collect Payment
+                            <IndianRupee size={12} /> Collect Payment
                           </button>
                         </td>
                       </tr>

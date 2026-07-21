@@ -39,7 +39,7 @@ const loginUser = async (req, res) => {
       res.status(401).json({ message: 'Incorrect login credentials' });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Database connection error. Please ensure MongoDB is running.' });
+    res.status(500).json({ message: error.message });
   }
 };
 

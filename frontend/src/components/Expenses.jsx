@@ -3,12 +3,13 @@ import {
   Plus,
   Trash2,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Loader2,
   ArrowLeft,
   Tag,
   Briefcase,
-  Save
+  Save,
+  Edit2
 } from 'lucide-react';
 import { expenseService } from '../services/api';
 import toast from 'react-hot-toast';
@@ -18,6 +19,7 @@ const Expenses = ({ _user }) => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -51,13 +53,23 @@ const Expenses = ({ _user }) => {
     setExpenseDate(new Date().toISOString().split('T')[0]);
   };
 
-  const handleOpenForm = () => {
-    resetForm();
+  const handleOpenForm = (expense = null) => {
+    if (expense) {
+      setTitle(expense.title);
+      setAmount(expense.amount);
+      setCategory(expense.category);
+      setExpenseDate(new Date(expense.expenseDate).toISOString().split('T')[0]);
+      setEditingId(expense._id);
+    } else {
+      resetForm();
+      setEditingId(null);
+    }
     setShowForm(true);
   };
 
   const handleCancel = () => {
     resetForm();
+    setEditingId(null);
     setShowForm(false);
   };
 
@@ -69,14 +81,19 @@ const Expenses = ({ _user }) => {
     }
     try {
       setSaving(true);
-      await expenseService.createExpense({
-        title,
-        amount: Number(amount),
-        category,
-        expenseDate,
-      });
-      toast.success('Expense recorded successfully!');
+      if (editingId) {
+        await expenseService.updateExpense(editingId, {
+          title, amount: Number(amount), category, expenseDate,
+        });
+        toast.success('Expense updated successfully!');
+      } else {
+        await expenseService.createExpense({
+          title, amount: Number(amount), category, expenseDate,
+        });
+        toast.success('Expense recorded successfully!');
+      }
       setShowForm(false);
+      setEditingId(null);
       resetForm();
       fetchExpenses();
     } catch (error) {
@@ -117,7 +134,7 @@ const Expenses = ({ _user }) => {
   // ===== FORM PAGE VIEW =====
   if (showForm) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fadeIn px-4">
+      <div className="flex flex-col items-center py-8 min-h-[70vh] animate-fadeIn px-4 sm:px-0">
         {/* Back Button */}
         <div className="w-full max-w-2xl mb-4">
           <button
@@ -133,10 +150,10 @@ const Expenses = ({ _user }) => {
           {/* Card Header */}
           <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-red-50 text-red-500 mb-3">
-              <DollarSign size={24} />
+              <IndianRupee size={24} />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Record Business Expense</h2>
-            <p className="text-sm text-gray-500 mt-1">Log a new overhead cost for your business.</p>
+            <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Business Expense' : 'Record Business Expense'}</h2>
+            <p className="text-sm text-gray-500 mt-1">{editingId ? 'Update this expense record.' : 'Log a new overhead cost for your business.'}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
@@ -198,14 +215,14 @@ const Expenses = ({ _user }) => {
               />
             </div>
 
-            {/* Actions — centered */}
-            <div className="flex items-center justify-center gap-3 pt-3 border-t border-gray-100">
-              <button type="button" onClick={handleCancel} className="btn-secondary">
+            {/* Footer */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button type="button" onClick={handleCancel} className="px-5 py-2.5 text-sm font-semibold rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
-              <button type="submit" className="btn-primary" disabled={saving}>
+              <button type="submit" disabled={saving} className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-pharmacy-600 text-white hover:bg-pharmacy-500 transition-colors shadow flex items-center gap-2">
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                {saving ? 'Saving...' : 'Save Expense'}
+                {editingId ? 'Update Expense' : 'Save Expense Record'}
               </button>
             </div>
           </form>
@@ -223,9 +240,8 @@ const Expenses = ({ _user }) => {
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">Expenses Tracker</h2>
           <p className="text-sm text-gray-500">Track daily operational overheads, salaries, rent, and utilities.</p>
         </div>
-        <button onClick={handleOpenForm} className="btn-primary">
-          <Plus size={16} />
-          Record Expense
+          <button onClick={() => handleOpenForm()} className="btn-primary">
+            <Plus size={16} /> Record Expense
         </button>
       </div>
 
@@ -234,10 +250,10 @@ const Expenses = ({ _user }) => {
         <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Expenses</span>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">${totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">₹{totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
           </div>
           <div className="p-3 rounded-xl bg-red-50 text-red-500">
-            <DollarSign size={24} />
+            <IndianRupee size={24} />
           </div>
         </div>
 
@@ -273,10 +289,10 @@ const Expenses = ({ _user }) => {
           </div>
         ) : expenses.length === 0 ? (
           <div className="text-center py-16">
-            <DollarSign size={48} className="mx-auto mb-4 text-gray-300" />
+            <IndianRupee size={48} className="mx-auto mb-4 text-gray-300" />
             <h3 className="text-lg font-semibold text-gray-900">No Expenses Recorded</h3>
             <p className="text-sm text-gray-500 mt-1">Start logging your business overhead expenses here.</p>
-            <button onClick={handleOpenForm} className="btn-primary mt-4">
+            <button onClick={() => handleOpenForm()} className="btn-primary mt-4">
               <Plus size={16} /> Record First Expense
             </button>
           </div>
@@ -305,7 +321,7 @@ const Expenses = ({ _user }) => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-red-600">
-                      -${e.amount.toFixed(2)}
+                      -₹{e.amount.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5 text-gray-500 text-xs">
@@ -317,13 +333,22 @@ const Expenses = ({ _user }) => {
                       {e.recordedBy}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleDelete(e._id)}
-                        title="Delete record"
-                        className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => handleOpenForm(e)}
+                          title="Edit record"
+                          className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(e._id)}
+                          title="Delete record"
+                          className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
