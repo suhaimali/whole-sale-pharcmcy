@@ -4,6 +4,18 @@ import { AuthProvider } from './context/AuthProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
+import PdfViewer from './components/PdfViewer';
+
+// Temporary test component for PDF Viewer
+function PdfViewerTest() {
+  return (
+    <div className="h-screen w-screen p-10 bg-gray-50 flex items-center justify-center">
+      <div className="w-full max-w-4xl h-[80vh]">
+        <PdfViewer file="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" />
+      </div>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -13,6 +25,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           
+          <Route path="/pdf-viewer-test" element={<PdfViewerTest />} />
+
           <Route 
             path="/dashboard" 
             element={

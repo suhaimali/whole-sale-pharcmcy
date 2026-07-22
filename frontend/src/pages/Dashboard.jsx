@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import {
   LogOut,
   LayoutDashboard,
-  Pill,
+  Link,
   ShoppingCart,
   Package,
   FileText,
@@ -118,29 +118,31 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans transition-colors duration-300 bg-gray-50 text-gray-900">
+    <div className="min-h-screen flex flex-col font-sans transition-colors duration-300 bg-gray-50 text-gray-900 overflow-x-hidden">
       
       {/* Top Navbar */}
-      <nav className="fixed top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-4 md:px-6 bg-white border-b border-gray-200">
-        <div className="flex items-center gap-3">
+      <nav className="fixed top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-4 md:px-6 bg-white border-b border-gray-100">
+        <div className="flex items-center gap-4">
           <button 
             className="md:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
-            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl text-white bg-pharmacy-600">
-            <Pill size={20} strokeWidth={2.5} />
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-12 items-center justify-center rounded-[14px] text-white bg-[#2563eb]">
+              <Link size={20} strokeWidth={2.5} className="rotate-45" />
+            </div>
+            <span className="text-xl font-extrabold tracking-tight text-[#0f172a] hidden sm:block">
+              Suhaim Soft ERP
+            </span>
           </div>
-          <span className="text-lg md:text-xl font-bold tracking-tight text-gray-900 flex items-center gap-1.5">
-            Suhaim Soft ERP
-          </span>
         </div>
 
         <div className="flex items-center gap-4">
           {/* User profile metadata */}
-          <div className="hidden md:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border bg-gray-100 border-gray-200 text-gray-700">
-            <ShieldCheck size={14} className="text-pharmacy-600" />
+          <div className="hidden md:flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border bg-gray-50 border-gray-200 text-gray-700">
+            <ShieldCheck size={14} className="text-[#2563eb]" />
             <span className="font-bold">{user.username}</span>
             <span className="opacity-50">|</span>
             <span className="font-medium truncate max-w-[80px]">{user.role}</span>
@@ -163,19 +165,19 @@ const Dashboard = () => {
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
           <div 
-            className="fixed top-16 bottom-0 left-0 right-0 bg-gray-900/50 z-40 md:hidden"
+            className="fixed inset-0 top-16 bg-gray-900/40 z-40 md:hidden backdrop-blur-sm transition-opacity"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar Nav */}
-        <aside className={`fixed top-16 bottom-0 left-0 w-64 z-40 flex flex-col justify-between py-6 px-4 bg-white border-r border-gray-200 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:z-20`}>
-          <div className="space-y-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider pl-2 text-gray-500">
+        <aside className={`fixed top-16 bottom-0 left-0 w-64 z-50 flex flex-col justify-between py-6 bg-white border-r border-gray-100 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:z-20`}>
+          <div className="space-y-4">
+            <span className="text-[11px] font-bold uppercase tracking-[0.1em] px-6 text-[#64748b]">
               Enterprise Modules
             </span>
 
-            <nav className="space-y-1.5">
+            <nav className="space-y-1.5 px-3">
               {allowedNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -184,18 +186,19 @@ const Dashboard = () => {
                   <button
                     key={item.id}
                     onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${isActive ? 'bg-pharmacy-50 text-pharmacy-700 border-l-4 border-pharmacy-600' : 'text-gray-600 hover:bg-gray-100 border-l-4 border-transparent'}`}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-[14px] font-semibold transition-all group ${isActive ? 'bg-[#eff6ff] text-[#2563eb]' : 'text-[#475569] hover:bg-gray-50'}`}
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-3">
                       <Icon
                         size={18}
-                        className={`transition-colors ${isActive ? 'text-pharmacy-600' : 'text-gray-400 group-hover:text-gray-600'}`}
+                        className={`transition-colors ${isActive ? 'text-[#3b82f6]' : 'text-[#94a3b8] group-hover:text-[#64748b]'}`}
+                        strokeWidth={isActive ? 2.5 : 2}
                       />
                       <span>{item.name}</span>
                     </div>
                     <ChevronRight
                       size={14}
-                      className={`opacity-0 group-hover:opacity-100 transition-all text-gray-400 ${isActive ? 'translate-x-0.5 opacity-100 text-pharmacy-400' : ''}`}
+                      className={`transition-all ${isActive ? 'opacity-100 text-[#93c5fd] translate-x-0' : 'opacity-0 -translate-x-1 group-hover:opacity-100 text-gray-300'}`}
                     />
                   </button>
                 );
@@ -204,9 +207,9 @@ const Dashboard = () => {
           </div>
 
           {/* Footer brand details */}
-          <div className="px-2 pt-4 border-t border-gray-100 text-[10px] text-gray-400">
-            <div>Suhaim Soft &copy; 2026</div>
-            <div className="mt-0.5 truncate font-mono">Role: {user.role}</div>
+          <div className="px-6 pt-5 pb-2 mt-4 border-t border-gray-100/60">
+            <div className="text-[12px] font-medium text-[#94a3b8]">Suhaim Soft &copy; 2026</div>
+            <div className="text-[12px] font-mono text-[#cbd5e1] mt-1">Role: <span className="text-[#94a3b8]">{user.role}</span></div>
           </div>
         </aside>
 

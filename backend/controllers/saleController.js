@@ -313,9 +313,136 @@ const deleteSale = async (req, res) => {
   }
 };
 
+// @desc    Update a sale
+// @route   PUT /api/sales/:id
+// @access  Private (Admin, Administrator, Sales Staff)
+const updateSale = async (req, res) => {
+  const { customerName, type, referenceNumber, items, subTotal, discount, tax, totalAmount, paymentMethod, paymentStatus } = req.body;
+  const docType = type || 'Invoice';
+
+  if (isDbConnected()) {
+    try {
+      const sale = await Sale.findById(req.params.id);
+      if (!sale) {
+        return res.status(404).json({ message: 'Sale document not found' });
+      }
+
+      // Reverse previous inventory effects
+      if (sale.type === 'Invoice' || sale.type === 'Challan') {
+        for (const item of sale.items) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            product.quantity += item.quantity;
+            await product.save();
+          }
+        }
+      } else if (sale.type === 'Return') {
+        for (const item of sale.items) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            product.quantity -= item.quantity;
+            await product.save();
+          }
+        }
+      }
+
+      // Apply new inventory effects
+      if (docType === 'Invoice' || docType === 'Challan') {
+        for (const item of items) {
+          const product = await Product.findById(item.productId);
+          if (!product) throw new Error(`Product ${item.name} not found`);
+          if (product.quantity < item.quantity) {
+            throw new Error(`Insufficient stock for ${product.name}.`);
+          }
+          product.quantity -= item.quantity;
+          await product.save();
+        }
+      } else if (docType === 'Return') {
+        for (const item of items) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            product.quantity += item.quantity;
+            await product.save();
+          }
+        }
+      }
+
+      // Update fields
+      sale.customerName = customerName || 'Walk-in Customer';
+      sale.type = docType;
+      sale.referenceNumber = referenceNumber || '';
+      sale.items = items;
+      sale.subTotal = Number(subTotal);
+      sale.discount = Number(discount) || 0;
+      sale.tax = Number(tax) || 0;
+      sale.totalAmount = Number(totalAmount);
+      sale.paymentMethod = paymentMethod || 'Cash';
+      sale.paymentStatus = paymentStatus || 'Paid';
+      
+      const updatedSale = await sale.save();
+      res.json(updatedSale);
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  } else {
+    // In-memory fallback
+    const index = localSales.findIndex((s) => s._id === req.params.id);
+    if (index === -1) return res.status(404).json({ message: 'Sale document not found' });
+
+    const sale = localSales[index];
+
+    // Reverse previous inventory
+    if (sale.type === 'Invoice' || sale.type === 'Challan') {
+      for (const item of sale.items) {
+        const pIndex = localProducts.findIndex((p) => p._id === item.productId);
+        if (pIndex !== -1) localProducts[pIndex].quantity += item.quantity;
+      }
+    } else if (sale.type === 'Return') {
+      for (const item of sale.items) {
+        const pIndex = localProducts.findIndex((p) => p._id === item.productId);
+        if (pIndex !== -1) localProducts[pIndex].quantity -= item.quantity;
+      }
+    }
+
+    // Apply new inventory
+    if (docType === 'Invoice' || docType === 'Challan') {
+      for (const item of items) {
+        const pIndex = localProducts.findIndex((p) => p._id === item.productId);
+        if (pIndex === -1) return res.status(400).json({ message: `Product ${item.name} not found` });
+        if (localProducts[pIndex].quantity < item.quantity) {
+          return res.status(400).json({ message: `Insufficient stock for ${item.name}.` });
+        }
+        localProducts[pIndex].quantity -= item.quantity;
+      }
+    } else if (docType === 'Return') {
+      for (const item of items) {
+        const pIndex = localProducts.findIndex((p) => p._id === item.productId);
+        if (pIndex !== -1) localProducts[pIndex].quantity += item.quantity;
+      }
+    }
+
+    localSales[index] = {
+      ...sale,
+      customerName: customerName || 'Walk-in Customer',
+      type: docType,
+      referenceNumber: referenceNumber || '',
+      items,
+      subTotal: Number(subTotal),
+      discount: Number(discount) || 0,
+      tax: Number(tax) || 0,
+      totalAmount: Number(totalAmount),
+      paymentMethod: paymentMethod || 'Cash',
+      paymentStatus: paymentStatus || 'Paid',
+    };
+
+    res.json(localSales[index]);
+  }
+};
+
 module.exports = {
   getSales,
   createSale,
   collectPayment,
   deleteSale,
+  updateSale,
 };
